@@ -1,13 +1,14 @@
 from fastapi import FastAPI
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
+import os
 
 app = FastAPI()
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
-SPREADSHEET_ID = "1ou9CnVid6M1BSZuenY_6PhUBwo-KdxuN"
+SPREADSHEET_ID = "1pAOA-08klajkKqtufhUKdsDg2XskcWWKJQOUGaawec0"
 creds = Credentials.from_service_account_file(
-    "service_account.json",
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"],
     scopes=SCOPES
 )
 
