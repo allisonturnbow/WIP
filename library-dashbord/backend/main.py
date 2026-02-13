@@ -7,9 +7,14 @@ from fastapi.middleware.cors import CORSMiddleware
 
 
 app = FastAPI()
+
+origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -107,14 +112,11 @@ def get_book_stats(
     percentage_read = (number_read / total_books) * 100 if total_books > 0 else 0
 
     author_counts = {}
-    for book in books:
-        author = book.get("Author", "").strip()
-        if author:
-            author_counts[author] = author_counts.get(author, 0) + 1
-
     genre_counts = {}
     for book in books:
+        author = book.get("Author", "").strip()
         genre = book.get("Genre", "")
+        author_counts[author] = author_counts.get(author, 0) + 1
         genre_counts[genre] = genre_counts.get(genre, 0) + 1
 
     return {
