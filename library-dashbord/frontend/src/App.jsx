@@ -2,12 +2,14 @@ import { useEffect, useState } from "react";
 
 function App() {
   const [books, setBooks] = useState([]);
-  const [filter, setFilter] = useState("all"); // all, owned, wishlist, read, not read, n/a
+  const [filter, setFilter] = useState("all");
   const [stats, setStats] = useState(null);
-  const [showStats, setShowStats] = useState(true); // toggle stats display
+  const [showStats, setShowStats] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Build query params
+    setLoading(true);
+
     let query = "";
     if (filter === "owned") query = "?source=owned";
     else if (filter === "wishlist") query = "?source=wishlist";
@@ -16,17 +18,28 @@ function App() {
     else if (filter === "n/a") query = "?read=N/A";
 
     const booksUrl = "http://127.0.0.1:8000/books" + query;
+
     fetch(booksUrl)
       .then((res) => res.json())
-      .then((data) => setBooks(data))
-      .catch((err) => console.error(err));
+      .then((data) => {
+        setBooks(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        console.error("Books fetch failed:", err);
+        setLoading(false);
+      });
 
     if (showStats) {
       const statsUrl = "http://127.0.0.1:8000/books/stats" + query;
+
       fetch(statsUrl)
         .then((res) => res.json())
         .then((data) => setStats(data))
-        .catch((err) => console.error(err));
+        .catch((err) => {
+          console.error("Stats fetch failed:", err);
+          setStats(null);
+        });
     } else {
       setStats(null);
     }
@@ -36,7 +49,6 @@ function App() {
     <div style={{ padding: "2rem" }}>
       <h1>My Library</h1>
 
-      {/* Filter Buttons */}
       <div style={{ marginBottom: "1rem" }}>
         {["all", "owned", "wishlist", "read", "not read", "n/a"].map((f) => (
           <button
@@ -52,7 +64,6 @@ function App() {
         </button>
       </div>
 
-      {/* Stats Display */}
       {showStats && stats && (
         <div style={{ marginBottom: "1rem" }}>
           <p>Total books: {stats.total_books}</p>
@@ -61,9 +72,10 @@ function App() {
         </div>
       )}
 
-      {/* Books List */}
-      {books.length === 0 ? (
+      {loading ? (
         <p>Loading...</p>
+      ) : books.length === 0 ? (
+        <p>No books found.</p>
       ) : (
         <ul>
           {books.map((book, index) => (

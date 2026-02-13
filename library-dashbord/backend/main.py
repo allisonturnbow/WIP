@@ -97,7 +97,6 @@ def get_read_books():
     return get_books(read="Read")
 
 
-# right now this only is the stats of the books that i own so i could change that later but i dont want to right now
 @app.get("/books/stats")
 def get_book_stats(
     source: Optional[Literal["owned", "wishlist"]] = None,
@@ -113,9 +112,15 @@ def get_book_stats(
 
     author_counts = {}
     genre_counts = {}
+
     for book in books:
-        author = book.get("Author", "").strip()
-        genre = book.get("Genre", "")
+        author = book.get("Author") or "Unknown"
+        if not isinstance(author, str):
+            author = "Unknown"
+        author = author.strip()
+
+        genre = book.get("Genre") or "Unknown"
+
         author_counts[author] = author_counts.get(author, 0) + 1
         genre_counts[genre] = genre_counts.get(genre, 0) + 1
 
