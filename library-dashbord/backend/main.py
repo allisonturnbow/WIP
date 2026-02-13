@@ -3,8 +3,17 @@ from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 import os
 from typing import Optional, Literal
+from fastapi.middleware.cors import CORSMiddleware
+
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
 SPREADSHEET_ID = "1pAOA-08klajkKqtufhUKdsDg2XskcWWKJQOUGaawec0"
