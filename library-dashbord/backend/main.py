@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
 import os
+from typing import Optional, Literal
 
 app = FastAPI()
 
@@ -15,7 +16,7 @@ os.environ["GOOGLE_APPLICATION_CREDENTIALS"],
 service = build("sheets", "v4", credentials=creds)
 
 
-def read_sheet(sheet_name: str):
+def get_sheet_data(sheet_name: str):
     range_name = f"{sheet_name}!A1:Z"
 
     result = service.spreadsheets().values().get(
@@ -36,12 +37,70 @@ def read_sheet(sheet_name: str):
         for row in data
     ]
 
+@app.get("/books")
+def get_books(source: str = None, read: str = None):
+    owned_books = get_sheet_data("Bookshelf")
+    wishlist_books = get_sheet_data("Want to Buy")
+
+    for book in owned_books:
+        book["Source"] = "owned"
+
+    for book in wishlist_books:
+        book["Source"] = "wishlist"
+
+    all_books = owned_books + wishlist_books
+
+    if source:
+        all_books = [
+            book for book in all_books
+            if book.get("Source") == source
+        ]
+
+    if read:
+        all_books = [
+            book for book in all_books
+            if book.get("Read") == read
+        ]
+
+
+    return all_books
+
 
 @app.get("/books/owned")
-def get_owned_books():
-    return read_sheet("Bookshelf")
-
+def get_owned_books(read: Optional[Literal["Read", "Not Read", "N/A"]] = None):
+    return get_books(source = "owned", read = read)
 
 @app.get("/books/wishlist")
-def get_wishlist():
-    return read_sheet("Want to Buy")
+def get_wishlist_books():
+  return get_books(source = "wishlist")
+
+@app.get("/books/read")
+def get_read_books():
+  return get_books(read = "Read")
+
+
+#right now this only is the stats of the books that i own so i could change that later but i dont want to right now
+@app.get("/books/stats")
+def get_book_stats():
+  books = get_sheet_data("Bookshelf")
+
+  total_books = len(books)
+
+  read_books = [
+      book for book in books
+      if book.get("Read") == "Read"
+  ]
+
+  number_read = len(read_books)
+
+  percentage_read = (
+      (number_read / total_books) * 100
+      if total_books > 0 else 0
+  )
+
+  return {
+      "total_books": total_books,
+      "number_read": number_read,
+      "percentage_read": round(percentage_read, 2)
+  }
+
