@@ -1,6 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from google.oauth2.service_account import Credentials
 from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
 import os
 from typing import Optional, Literal
 from fastapi.middleware.cors import CORSMiddleware
@@ -32,12 +33,15 @@ service = build("sheets", "v4", credentials=creds)
 def get_sheet_data(sheet_name: str):
     range_name = f"{sheet_name}!A1:Z"
 
-    result = (
-        service.spreadsheets()
-        .values()
-        .get(spreadsheetId=SPREADSHEET_ID, range=range_name)
-        .execute()
-    )
+    try:
+        result = (
+            service.spreadsheets()
+            .values()
+            .get(spreadsheetId=SPREADSHEET_ID, range=range_name)
+            .execute()
+        )
+    except HttpError as e:
+        raise HTTPException(status_code=502, detail=f"Google Sheets API error: {e}")
 
     rows = result.get("values", [])
 
@@ -47,14 +51,8 @@ def get_sheet_data(sheet_name: str):
     headers = rows[0]
     data = rows[1:]
 
-    return [dict(zip(headers, row)) for row in data]
-
-
-"""
-@app.route("/")
-def home():
-    return "Hello from backend!"
-"""
+    # FIX: pad short rows so all header fields are present in every dict
+    return [dict(zip(headers, row + [""] * (len(headers) - len(row)))) for row in data]
 
 
 @app.get("/books")
@@ -102,24 +100,19 @@ def get_book_stats(
     source: Optional[Literal["owned", "wishlist"]] = None,
     read: Optional[Literal["Read", "Not Read", "N/A"]] = None,
 ):
+    # FIX: reuse get_books so filtering logic is always in sync
     books = get_books(source=source, read=read)
 
     total_books = len(books)
-
     number_read = sum(1 for book in books if book.get("Read") == "Read")
-
     percentage_read = (number_read / total_books) * 100 if total_books > 0 else 0
 
     author_counts = {}
     genre_counts = {}
 
     for book in books:
-        author = book.get("Author") or "Unknown"
-        if not isinstance(author, str):
-            author = "Unknown"
-        author = author.strip()
-
-        genre = book.get("Genre") or "Unknown"
+        author = (book.get("Author") or "Unknown").strip() or "Unknown"
+        genre = (book.get("Genre") or "Unknown").strip() or "Unknown"
 
         author_counts[author] = author_counts.get(author, 0) + 1
         genre_counts[genre] = genre_counts.get(genre, 0) + 1
